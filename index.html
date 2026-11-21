@@ -12,10 +12,12 @@ body {
     background: #080d20;
     color: white;
     text-align: center;
-    font-family: Arial;
+    font-family: Arial, sans-serif;
 }
 
-h1 { color: #70eaff; }
+h1 {
+    color: #70eaff;
+}
 
 canvas {
     background: #080d20;
@@ -42,17 +44,22 @@ button {
 <p>Protect Earth from falling rocks!</p>
 
 <h3>
-❤️ <span id="health">3</span>
-&nbsp;&nbsp;&nbsp;
+❤️ <span id="health">❤️❤️❤️</span>
+&nbsp;&nbsp;
 🏆 Score: <span id="score">0</span>
+</h3>
+
+<h3>
+Difficulty Level: <span id="level">1</span>
 </h3>
 
 <canvas id="game" width="700" height="500"></canvas>
 
 <br>
+
 <button onclick="restart()">Restart Game</button>
 
-<p>← → Move | ↑ Shoot Laser | SPACE Pause / Resume</p>
+<p>← → Move | ↑ Shoot Laser | SPACE Pause / Resume / Restart</p>
 
 <script>
 
@@ -60,11 +67,19 @@ const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
 let player, rocks, lasers;
-let score, health, gameOver, paused;
+
+let score, health;
+let gameOver, paused;
+
 let keys = {};
 let frame = 0;
 
-// Restart
+// Difficulty settings
+const MAX_ROCKS = 5;
+const MAX_ROCK_SPEED = 3.4;
+const MAX_SPAWN_INTERVAL = 50;
+
+// Restart game
 function restart() {
 
     player = {
@@ -78,10 +93,11 @@ function restart() {
 
     score = 0;
     health = 3;
+
     gameOver = false;
     paused = false;
-    frame = 0;
 
+    frame = 0;
     keys = {};
 
     updateUI();
@@ -90,14 +106,24 @@ function restart() {
 // Keyboard controls
 document.addEventListener("keydown", e => {
 
-    if (["Space", "ArrowUp", "ArrowLeft", "ArrowRight"].includes(e.code)) {
+    if (
+        ["Space", "ArrowUp", "ArrowLeft", "ArrowRight"].includes(e.code)
+    ) {
         e.preventDefault();
     }
 
     if (e.repeat) return;
 
-    if (e.code === "Space" && !gameOver) {
-        paused = !paused;
+    // SPACE: pause, resume or restart
+    if (e.code === "Space") {
+
+        if (gameOver) {
+            restart();
+        } else {
+            paused = !paused;
+        }
+
+        return;
     }
 
     keys[e.code] = true;
@@ -107,13 +133,53 @@ document.addEventListener("keyup", e => {
     keys[e.code] = false;
 });
 
-// Update score and health
+// Difficulty calculation
+function getDifficulty() {
+
+    // One level every 15 seconds
+    // Maximum level: 5
+    let level = Math.min(
+        5,
+        1 + Math.floor(frame / 900)
+    );
+
+    // Rock speed gradually increases
+    let baseSpeed = Math.min(
+        1.5 + (level - 1) * 0.35,
+        MAX_ROCK_SPEED
+    );
+
+    // More rocks appear over time
+    let maxRocks = Math.min(
+        5,
+        1 + level
+    );
+
+    // Spawn interval decreases gradually
+    // Lower interval means more frequent rocks
+    let spawnInterval = Math.max(
+        MAX_SPAWN_INTERVAL,
+        100 - (level - 1) * 12
+    );
+
+    return {
+        level,
+        baseSpeed,
+        maxRocks,
+        spawnInterval
+    };
+}
+
+// Update score, health and level
 function updateUI() {
 
     document.getElementById("health").textContent =
         "❤️".repeat(health) || "0";
 
     document.getElementById("score").textContent = score;
+
+    document.getElementById("level").textContent =
+        getDifficulty().level;
 }
 
 // Draw Earth
@@ -130,6 +196,7 @@ function drawEarth() {
 
     ctx.beginPath();
     ctx.arc(350, 510, 155, 0, Math.PI * 2);
+
     ctx.fillStyle = gradient;
     ctx.fill();
 
@@ -137,16 +204,23 @@ function drawEarth() {
     ctx.fillStyle = "#48c77a";
 
     ctx.beginPath();
-    ctx.ellipse(290, 440, 38, 20, -0.5, 0, Math.PI * 2);
+    ctx.ellipse(
+        290, 440, 38, 20,
+        -0.5, 0, Math.PI * 2
+    );
     ctx.fill();
 
     ctx.beginPath();
-    ctx.ellipse(390, 475, 28, 40, 0.5, 0, Math.PI * 2);
+    ctx.ellipse(
+        390, 475, 28, 40,
+        0.5, 0, Math.PI * 2
+    );
     ctx.fill();
 
     // Atmosphere
     ctx.beginPath();
     ctx.arc(350, 510, 160, Math.PI, 0);
+
     ctx.strokeStyle = "#6deaff";
     ctx.lineWidth = 4;
     ctx.stroke();
@@ -154,17 +228,30 @@ function drawEarth() {
 
 // Spaceship
 function drawPlayer() {
+
     ctx.font = "42px Arial";
-    ctx.fillText("🚀", player.x, player.y + 10);
+
+    ctx.fillText(
+        "🚀",
+        player.x,
+        player.y + 10
+    );
 }
 
-// Rocks
+// Draw rocks
 function drawRocks() {
 
     rocks.forEach(r => {
 
         ctx.beginPath();
-        ctx.arc(r.x, r.y, r.size, 0, Math.PI * 2);
+
+        ctx.arc(
+            r.x,
+            r.y,
+            r.size,
+            0,
+            Math.PI * 2
+        );
 
         ctx.fillStyle = "#92939e";
         ctx.fill();
@@ -173,15 +260,23 @@ function drawRocks() {
         ctx.lineWidth = 3;
         ctx.stroke();
 
+        // Rock details
         ctx.fillStyle = "#555663";
 
         ctx.beginPath();
-        ctx.arc(r.x - 5, r.y - 4, 4, 0, Math.PI * 2);
+        ctx.arc(
+            r.x - 5,
+            r.y - 4,
+            4,
+            0,
+            Math.PI * 2
+        );
+
         ctx.fill();
     });
 }
 
-// Lasers
+// Draw lasers
 function drawLasers() {
 
     lasers.forEach(l => {
@@ -190,40 +285,66 @@ function drawLasers() {
         ctx.shadowColor = "#ff4bfa";
 
         ctx.fillStyle = "#ff4bfa";
-        ctx.fillRect(l.x, l.y, 6, 22);
+
+        ctx.fillRect(
+            l.x,
+            l.y,
+            6,
+            22
+        );
 
         ctx.shadowBlur = 0;
     });
 }
 
-// Spawn rocks
+// Spawn rocks with increasing difficulty
 function spawnRocks() {
 
-    if (rocks.length < 3 && frame % 90 === 0) {
+    let difficulty = getDifficulty();
+
+    if (
+        rocks.length < difficulty.maxRocks &&
+        frame % difficulty.spawnInterval === 0
+    ) {
 
         rocks.push({
+
             x: 30 + Math.random() * 640,
+
             y: -30,
+
             size: 16 + Math.random() * 8,
-            speed: 1.2 + Math.random() * 0.6
+
+            speed: Math.min(
+                difficulty.baseSpeed + Math.random() * 0.4,
+                MAX_ROCK_SPEED
+            )
+
         });
     }
 }
 
-// Shoot laser using UP arrow
+// Shoot laser with UP arrow
 function shoot() {
 
-    if (keys["ArrowUp"] && frame % 8 === 0) {
+    if (
+        keys["ArrowUp"] &&
+        frame % 8 === 0
+    ) {
 
         lasers.push({
+
             x: player.x + 22,
+
             y: player.y - 20,
+
             speed: 14
+
         });
     }
 }
 
-// Update game
+// Main game update
 function update() {
 
     if (gameOver || paused) return;
@@ -244,19 +365,25 @@ function update() {
         Math.min(650, player.x)
     );
 
+    // Update difficulty display
+    if (frame % 60 === 0) {
+        updateUI();
+    }
+
     shoot();
     spawnRocks();
 
-    // Move rocks
+    // Move rocks and detect Earth collision
     for (let i = rocks.length - 1; i >= 0; i--) {
 
         let r = rocks[i];
+
         r.y += r.speed;
 
-        // Rock reaches Earth
         if (r.y + r.size >= 365) {
 
             rocks.splice(i, 1);
+
             health--;
 
             updateUI();
@@ -273,7 +400,7 @@ function update() {
         }
     }
 
-    // Laser-rock collision
+    // Laser and rock collision
     for (let i = rocks.length - 1; i >= 0; i--) {
 
         let r = rocks[i];
@@ -286,15 +413,21 @@ function update() {
             let dx = l.x - r.x;
             let dy = l.y - r.y;
 
-            if (Math.sqrt(dx * dx + dy * dy) < r.size + 10) {
+            let distance = Math.sqrt(
+                dx * dx + dy * dy
+            );
+
+            if (distance < r.size + 10) {
 
                 rocks.splice(i, 1);
                 lasers.splice(j, 1);
 
                 score += 10;
+
                 updateUI();
 
                 destroyed = true;
+
                 break;
             }
         }
@@ -306,7 +439,9 @@ function update() {
     if (health <= 0) {
 
         health = 0;
+
         gameOver = true;
+
         updateUI();
     }
 }
@@ -314,7 +449,12 @@ function update() {
 // Draw game
 function draw() {
 
-    ctx.clearRect(0, 0, 700, 500);
+    ctx.clearRect(
+        0,
+        0,
+        canvas.width,
+        canvas.height
+    );
 
     drawEarth();
     drawRocks();
@@ -324,25 +464,34 @@ function draw() {
     if (paused || gameOver) {
 
         ctx.fillStyle = "rgba(0,0,0,0.75)";
-        ctx.fillRect(0, 0, 700, 500);
+
+        ctx.fillRect(
+            0,
+            0,
+            canvas.width,
+            canvas.height
+        );
 
         ctx.fillStyle = "white";
+
         ctx.textAlign = "center";
 
         ctx.font = "40px Arial";
 
         ctx.fillText(
             gameOver ? "EARTH DESTROYED!" : "PAUSED",
-            350, 220
+            350,
+            220
         );
 
         ctx.font = "22px Arial";
 
         ctx.fillText(
             gameOver
-                ? "Final Score: " + score
+                ? "Final Score: " + score + " | SPACE to Restart"
                 : "Press SPACE to Resume",
-            350, 265
+            350,
+            265
         );
 
         ctx.textAlign = "left";
@@ -353,14 +502,17 @@ function draw() {
 function loop() {
 
     update();
+
     draw();
 
     requestAnimationFrame(loop);
 }
 
+// Start
 restart();
 loop();
 
 </script>
+
 </body>
 </html>
