@@ -39,12 +39,12 @@ button {
 <body>
 
 <h1>🌍 EARTH DEFENDER 🚀</h1>
-<p>Protect Earth from falling stars and rocks!</p>
+<p>Protect Earth from falling rocks!</p>
 
 <h3>
 ❤️ <span id="health">3</span>
 &nbsp;&nbsp;&nbsp;
-⭐ Score: <span id="score">0</span>
+🏆 Score: <span id="score">0</span>
 </h3>
 
 <canvas id="game" width="700" height="500"></canvas>
@@ -52,48 +52,64 @@ button {
 <br>
 <button onclick="restart()">Restart Game</button>
 
-<p>← → Move &nbsp; | &nbsp; SPACE Shoot Laser</p>
+<p>← → Move | ↑ Shoot Laser | SPACE Pause / Resume</p>
 
 <script>
+
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
-let player, stars, rocks, lasers;
-let score, health, gameOver;
+let player, rocks, lasers;
+let score, health, gameOver, paused;
 let keys = {};
 let frame = 0;
 
+// Restart
 function restart() {
+
     player = {
         x: 325,
         y: 390,
-        width: 50,
         speed: 6
     };
 
-    stars = [];
     rocks = [];
     lasers = [];
 
     score = 0;
     health = 3;
     gameOver = false;
+    paused = false;
     frame = 0;
+
+    keys = {};
 
     updateUI();
 }
 
+// Keyboard controls
 document.addEventListener("keydown", e => {
-    keys[e.code] = true;
 
-    if (e.code === "Space") e.preventDefault();
+    if (["Space", "ArrowUp", "ArrowLeft", "ArrowRight"].includes(e.code)) {
+        e.preventDefault();
+    }
+
+    if (e.repeat) return;
+
+    if (e.code === "Space" && !gameOver) {
+        paused = !paused;
+    }
+
+    keys[e.code] = true;
 });
 
 document.addEventListener("keyup", e => {
     keys[e.code] = false;
 });
 
+// Update score and health
 function updateUI() {
+
     document.getElementById("health").textContent =
         "❤️".repeat(health) || "0";
 
@@ -102,6 +118,7 @@ function updateUI() {
 
 // Draw Earth
 function drawEarth() {
+
     let gradient = ctx.createRadialGradient(
         320, 455, 10,
         350, 510, 180
@@ -135,36 +152,17 @@ function drawEarth() {
     ctx.stroke();
 }
 
-// Background stars
-function drawBackground() {
-    ctx.fillStyle = "white";
-
-    for (let i = 0; i < 35; i++) {
-        let x = (i * 97) % 700;
-        let y = (i * 53) % 370;
-
-        ctx.fillRect(x, y, 2, 2);
-    }
-}
-
-// Player spaceship
+// Spaceship
 function drawPlayer() {
     ctx.font = "42px Arial";
     ctx.fillText("🚀", player.x, player.y + 10);
 }
 
-// Falling stars
-function drawStars() {
-    ctx.font = "23px Arial";
-
-    stars.forEach(s => {
-        ctx.fillText("⭐", s.x, s.y);
-    });
-}
-
-// Falling rocks
+// Rocks
 function drawRocks() {
+
     rocks.forEach(r => {
+
         ctx.beginPath();
         ctx.arc(r.x, r.y, r.size, 0, Math.PI * 2);
 
@@ -176,39 +174,33 @@ function drawRocks() {
         ctx.stroke();
 
         ctx.fillStyle = "#555663";
+
         ctx.beginPath();
         ctx.arc(r.x - 5, r.y - 4, 4, 0, Math.PI * 2);
         ctx.fill();
     });
 }
 
-// Laser
+// Lasers
 function drawLasers() {
-    lasers.forEach(l => {
-        ctx.fillStyle = "#ff4bfa";
-        ctx.fillRect(l.x, l.y, 5, 18);
 
-        ctx.shadowBlur = 12;
+    lasers.forEach(l => {
+
+        ctx.shadowBlur = 15;
         ctx.shadowColor = "#ff4bfa";
-        ctx.fillRect(l.x, l.y, 5, 18);
+
+        ctx.fillStyle = "#ff4bfa";
+        ctx.fillRect(l.x, l.y, 6, 22);
+
         ctx.shadowBlur = 0;
     });
 }
 
-// Spawn objects
-function spawnObjects() {
+// Spawn rocks
+function spawnRocks() {
 
-    // Maximum 3 stars at a time
-    if (stars.length < 3 && frame % 100 === 0) {
-        stars.push({
-            x: 25 + Math.random() * 650,
-            y: -20,
-            speed: 0.9 + Math.random() * 0.5
-        });
-    }
+    if (rocks.length < 3 && frame % 90 === 0) {
 
-    // Maximum 2 rocks at a time
-    if (rocks.length < 2 && frame % 150 === 0) {
         rocks.push({
             x: 30 + Math.random() * 640,
             y: -30,
@@ -218,28 +210,32 @@ function spawnObjects() {
     }
 }
 
-// Shoot laser
+// Shoot laser using UP arrow
 function shoot() {
-    if (keys["Space"] && frame % 18 === 0) {
+
+    if (keys["ArrowUp"] && frame % 8 === 0) {
+
         lasers.push({
-            x: player.x + 20,
+            x: player.x + 22,
             y: player.y - 20,
-            speed: 8
+            speed: 14
         });
     }
 }
 
+// Update game
 function update() {
-    if (gameOver) return;
+
+    if (gameOver || paused) return;
 
     frame++;
 
     // Player movement
-    if (keys["ArrowLeft"] || keys["KeyA"]) {
+    if (keys["ArrowLeft"]) {
         player.x -= player.speed;
     }
 
-    if (keys["ArrowRight"] || keys["KeyD"]) {
+    if (keys["ArrowRight"]) {
         player.x += player.speed;
     }
 
@@ -249,74 +245,84 @@ function update() {
     );
 
     shoot();
-    spawnObjects();
-
-    // Move stars
-    stars.forEach((s, i) => {
-        s.y += s.speed;
-
-        if (s.y >= 365) {
-            stars.splice(i, 1);
-            health--;
-            updateUI();
-        }
-    });
+    spawnRocks();
 
     // Move rocks
-    rocks.forEach((r, i) => {
+    for (let i = rocks.length - 1; i >= 0; i--) {
+
+        let r = rocks[i];
         r.y += r.speed;
 
+        // Rock reaches Earth
         if (r.y + r.size >= 365) {
+
             rocks.splice(i, 1);
             health--;
+
             updateUI();
         }
-    });
+    }
 
     // Move lasers
-    lasers.forEach((l, i) => {
-        l.y -= l.speed;
+    for (let i = lasers.length - 1; i >= 0; i--) {
 
-        if (l.y < 0) {
+        lasers[i].y -= lasers[i].speed;
+
+        if (lasers[i].y < 0) {
             lasers.splice(i, 1);
         }
-    });
+    }
 
     // Laser-rock collision
-    lasers.forEach((l, li) => {
-        rocks.forEach((r, ri) => {
+    for (let i = rocks.length - 1; i >= 0; i--) {
+
+        let r = rocks[i];
+        let destroyed = false;
+
+        for (let j = lasers.length - 1; j >= 0; j--) {
+
+            let l = lasers[j];
 
             let dx = l.x - r.x;
             let dy = l.y - r.y;
 
-            if (Math.sqrt(dx * dx + dy * dy) < r.size + 7) {
-                rocks.splice(ri, 1);
-                lasers.splice(li, 1);
+            if (Math.sqrt(dx * dx + dy * dy) < r.size + 10) {
+
+                rocks.splice(i, 1);
+                lasers.splice(j, 1);
 
                 score += 10;
                 updateUI();
-            }
-        });
-    });
 
+                destroyed = true;
+                break;
+            }
+        }
+
+        if (destroyed) continue;
+    }
+
+    // Game over
     if (health <= 0) {
+
         health = 0;
         gameOver = true;
         updateUI();
     }
 }
 
+// Draw game
 function draw() {
+
     ctx.clearRect(0, 0, 700, 500);
 
-    drawBackground();
     drawEarth();
-    drawStars();
     drawRocks();
     drawLasers();
     drawPlayer();
 
-    if (gameOver) {
+    if (paused || gameOver) {
+
         ctx.fillStyle = "rgba(0,0,0,0.75)";
         ctx.fillRect(0, 0, 700, 500);
 
@@ -324,18 +330,31 @@ function draw() {
         ctx.textAlign = "center";
 
         ctx.font = "40px Arial";
-        ctx.fillText("EARTH DESTROYED!", 350, 220);
+
+        ctx.fillText(
+            gameOver ? "EARTH DESTROYED!" : "PAUSED",
+            350, 220
+        );
 
         ctx.font = "22px Arial";
-        ctx.fillText("Final Score: " + score, 350, 265);
+
+        ctx.fillText(
+            gameOver
+                ? "Final Score: " + score
+                : "Press SPACE to Resume",
+            350, 265
+        );
 
         ctx.textAlign = "left";
     }
 }
 
+// Game loop
 function loop() {
+
     update();
     draw();
+
     requestAnimationFrame(loop);
 }
 
